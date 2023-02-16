@@ -81,5 +81,3 @@ if __name__ == '__main__' :
             raise Exception('Parameter kurang')
     except Exception:
         icmp_help()
-"""    finally:
-        icmp_help()"""
