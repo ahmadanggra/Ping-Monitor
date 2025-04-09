@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# Module for ping
 from time import sleep
 from sys import argv,exit
 import os
@@ -11,12 +12,23 @@ from socket import gethostbyname,error
 import smtplib
 from email.mime.text import MIMEText
 import threading
+# For config parse
+import configparser
 
-# usage icmp_monitor <<update in second>> << list of ip address separate by comma (,)
-# example python icmp_monitor.py 192.168.0.1,192.168.0.2
+# for data please define data in data.ini
+# usage icmp_monitor <<update in second>> << list of ip address separate by comma (,) >>
+# or icmp_monitor <<update in second>> -f or --file
+# example python icmp_monitor.py 5 192.168.0.1,192.168.0.2
+# example python icmp_monitor.py 5 -f
+# to email if host/ip down add -s or --sendmail on last argument
+# example python icmp_monitor.py 5 192.168.0.1,192.168.0.2 --sendmail
+# example python icmp_monitor.py 5 -f -s
 def icmp_help():  
     print('Usage:')
-    print('python icmp_monitor.py [update ping in second] [list of ip address/hostname separated by comma.]')
+    print('python icmp_monitor.exe [interval] [list of ip address/hostname separated by comma.]')
+    print('python icmp_monitor.exe [interval] [list of ip address/hostname separated by comma.] [-s or --sendmail]')
+    print('python icmp_monitor.exe [interval] [-f or --file]')
+    print('python icmp_monitor.exe [interval] [-f or --file] [-s or --sendmail]')
     exit()    
 
 def hostname_resolves(hostname):
@@ -26,12 +38,12 @@ def hostname_resolves(hostname):
     except error:
         return 0
 
-def send_email(hostname):
+def send_email(hostname,sndr,rcpt,passwd):
     subject = "Host " + hostname + " Is Down"
     body = "Please check connectivity to host " + hostname
-    sender = "ahmadanggra@gmail.com"
-    recipients = ["ahmadanggra@gmail.com"]
-    password = "smqm wwrq tpov nlup"
+    sender = sndr
+    recipients = rcpt.split(',')
+    password = passwd
     msg = MIMEText(body)
     msg['Subject'] = subject
     msg['From'] = sender
@@ -40,10 +52,34 @@ def send_email(hostname):
        smtp_server.login(sender, password)
        smtp_server.sendmail(sender, recipients, msg.as_string())
 
-def main():
+def icmp_ping():
+    # reading parameter
     if argv[1] == '--help' or argv[1] == '-h':
         icmp_help()
-    addresses = list(map(str, argv[-1].split(',')))
+    if argv[2] == '--file' or argv[2] == '-f':
+        # Create a parser object
+        config = configparser.ConfigParser()
+        # Read the configuration file
+        config.read('data.ini')
+        # Get the string of IPs from the 'ips' key under the 'ip' section
+        ips_string = config.get('ip', 'ips')
+        # Split the string by commas and create a list of IPs
+        #addresses = [ip.strip() for ip in ips_string.split(',')]
+        addresses = ips_string.split(',')
+    if ',' in argv[2]:   
+        addresses = list(map(str, argv[2].split(',')))
+    # reading smtp config if -s or --sendmail defined as argument
+    if argv[-1] == '--sendmail' or argv[-1] == '-s':
+        # Create a parser object
+        config = configparser.ConfigParser()
+        # Read the configuration file
+        config.read('data.ini')
+        # Access the value for 'sender' under the 'email' section
+        sender = config.get('email', 'sender')
+        recipients = config.get('email', 'recipients')
+        password = config.get('email', 'password')        
+    
+    # table format 
     head = ['Host Address', 'Status', 'RTT']
     table = list()
     row = list()
@@ -67,8 +103,9 @@ def main():
                         row.append(str(host.max_rtt) + ' ms')
                         table.append(list(row))
                         row.clear()
-                        email_thread = threading.Thread(target=send_email, args=(host.address,))
-                        email_thread.start()
+                        if argv[-1] == '--sendmail' or argv[-1] == '-s':
+                            email_thread = threading.Thread(target=send_email, args=(host.address,sender,recipients,password,))
+                            email_thread.start()
                 else:
                     if hostname_resolves(address):
                         host = ping(address, count = 1, timeout = 1, privileged = False, interval = 0.1)
@@ -83,8 +120,9 @@ def main():
                             row.append(str(host.max_rtt) + ' ms')
                             table.append(list(row))
                             row.clear()
-                            email_thread = threading.Thread(target=send_email, args=(host.address,))
-                            email_thread.start()
+                            if argv[-1] == '--sendmail' or argv[-1] == '-s':
+                                email_thread = threading.Thread(target=send_email, args=(host.address,sender,recipients,password,))
+                                email_thread.start()
                     else:
                         row.append(address)
                         row.append('DNS query failed for')
@@ -97,14 +135,23 @@ def main():
     except KeyboardInterrupt:
         pass
 
+def main():
+    icmp_ping()
 
 if __name__ == '__main__' :
     try:
-        
-        if len(argv) == 3:
+        # for script using comma
+        if len(argv) == 3 and ',' in argv[2] and  argv[1].isdigit():
+            main()
+        elif len(argv) == 4 and ',' in argv[2] and  argv[1].isdigit() and ('-s' == argv[-1] or '--sendmail' == argv[-1]):
+            main()
+        # for script using file
+        elif len(argv) == 3 and ('-f' == argv[2] or '--file' == argv[2]) and  argv[1].isdigit():
+            print('test')
+            main()
+        elif len(argv) == 4 and ('-f' == argv[2] or '--file' == argv[2]) and  argv[1].isdigit() and ('-s' == argv[-1] or '--sendmail' == argv[-1]):
             main()
         else:
-            raise Exception('Parameter kurang')
-    except Exception as e:
-        print(e)
+            raise exceptions('Illegal parameter')
+    except :
         icmp_help()
