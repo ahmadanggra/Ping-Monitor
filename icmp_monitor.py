@@ -16,6 +16,10 @@ import threading
 import configparser
 
 # for data please define data in data.ini
+
+# in linux if you want using script without python you must convert it using dos2unix software 
+# or in vim use :set fileformat=unix, afterward save and close the script
+
 # usage icmp_monitor <<update in second>> << list of ip address separate by comma (,) >>
 # or icmp_monitor <<update in second>> -f or --file
 # example python icmp_monitor.py 5 192.168.0.1,192.168.0.2
@@ -23,6 +27,7 @@ import configparser
 # to email if host/ip down add -s or --sendmail on last argument
 # example python icmp_monitor.py 5 192.168.0.1,192.168.0.2 --sendmail
 # example python icmp_monitor.py 5 -f -s
+
 def icmp_help():  
     print('Usage:')
     print('python icmp_monitor.exe [interval] [list of ip address/hostname separated by comma.]')
