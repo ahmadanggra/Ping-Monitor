@@ -147,7 +147,6 @@ if __name__ == '__main__' :
             main()
         # for script using file
         elif len(argv) == 3 and ('-f' == argv[2] or '--file' == argv[2]) and  argv[1].isdigit():
-            print('test')
             main()
         elif len(argv) == 4 and ('-f' == argv[2] or '--file' == argv[2]) and  argv[1].isdigit() and ('-s' == argv[-1] or '--sendmail' == argv[-1]):
             main()
