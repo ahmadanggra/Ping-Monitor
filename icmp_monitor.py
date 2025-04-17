@@ -30,10 +30,15 @@ import configparser
 
 def icmp_help():  
     print('Usage:')
-    print('python icmp_monitor.exe [interval] [list of ip address/hostname separated by comma.]')
-    print('python icmp_monitor.exe [interval] [list of ip address/hostname separated by comma.] [-s or --sendmail]')
-    print('python icmp_monitor.exe [interval] [-f or --file]')
-    print('python icmp_monitor.exe [interval] [-f or --file] [-s or --sendmail]')
+    print('  python icmp_monitor.exe [interval] [list of ip address/hostname separated by comma.]')
+    print('  python icmp_monitor.exe [interval] [list of ip address/hostname separated by comma.] [-s or --sendmail]')
+    print('  python icmp_monitor.exe [interval] [-f or --file]')
+    print('  python icmp_monitor.exe [interval] [-f or --file] [-s or --sendmail]')
+    print('example:')
+    print('  python icmp_monitor.py 5 192.168.0.1,192.168.0.2')
+    print('  python icmp_monitor.py 5 192.168.0.1,192.168.0.2 --sendmail')
+    print('  python icmp_monitor.py 3 --file')
+    print('  python icmp_monitor.py 3 --file --sendmail')
     exit()    
 
 def hostname_resolves(hostname):
@@ -58,9 +63,7 @@ def send_email(hostname,sndr,rcpt,passwd):
        smtp_server.sendmail(sender, recipients, msg.as_string())
 
 def icmp_ping():
-    # reading parameter
-    if argv[1] == '--help' or argv[1] == '-h':
-        icmp_help()
+    # reading ip using file
     if argv[2] == '--file' or argv[2] == '-f':
         # Create a parser object
         config = configparser.ConfigParser()
@@ -71,6 +74,7 @@ def icmp_ping():
         # Split the string by commas and create a list of IPs
         #addresses = [ip.strip() for ip in ips_string.split(',')]
         addresses = ips_string.split(',')
+    # reading ip using comma
     if ',' in argv[2]:   
         addresses = list(map(str, argv[2].split(',')))
     # reading smtp config if -s or --sendmail defined as argument
@@ -141,21 +145,25 @@ def icmp_ping():
         pass
 
 def main():
-    icmp_ping()
-
-if __name__ == '__main__' :
     try:
+        # getting help
+        if len(argv) == 2 and (argv[1] == '--help' or argv[1] == '-h'):
+            icmp_help()
         # for script using comma
-        if len(argv) == 3 and ',' in argv[2] and  argv[1].isdigit():
-            main()
+        elif len(argv) == 3 and ',' in argv[2] and  argv[1].isdigit():
+            icmp_ping()
         elif len(argv) == 4 and ',' in argv[2] and  argv[1].isdigit() and ('-s' == argv[-1] or '--sendmail' == argv[-1]):
-            main()
+            icmp_ping()
         # for script using file
         elif len(argv) == 3 and ('-f' == argv[2] or '--file' == argv[2]) and  argv[1].isdigit():
-            main()
+            icmp_ping()
         elif len(argv) == 4 and ('-f' == argv[2] or '--file' == argv[2]) and  argv[1].isdigit() and ('-s' == argv[-1] or '--sendmail' == argv[-1]):
-            main()
+            icmp_ping()
         else:
-            raise exceptions('Illegal parameter')
-    except :
+            raise ValueError("Illegal parameter")
+    except ValueError as e:
+        print('Caught exception:', e)
         icmp_help()
+
+if __name__ == '__main__' :
+    main()
